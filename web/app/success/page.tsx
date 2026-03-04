@@ -164,17 +164,17 @@ function SuccessContent() {
           )}
         </div>
 
-        <div className="mt-10 pt-6 border-t border-[var(--border)] text-center">
-          <a href="/" className="btn-secondary">
+        <a
+          href="/setup"
+          className="block w-full text-center mt-8 py-4 px-6 rounded-full bg-[var(--neon)] text-black font-bold text-lg hover:brightness-110 transition-all"
+        >
+          Setup Steps
+        </a>
+
+        <div className="mt-6 text-center">
+          <a href="/" className="text-sm text-white/30 hover:text-white/50 transition-colors">
             Back to Home
           </a>
-          <p className="text-xs text-[var(--text-muted)] mt-4">
-            Need help? See the{" "}
-            <a href={`https://github.com/${GITHUB_REPO}/blob/main/bot/CONFIGURATION.md`} target="_blank" className="text-[var(--cyan)] hover:underline">
-              configuration guide
-            </a>{" "}
-            for full documentation.
-          </p>
         </div>
       </div>
     </div>
