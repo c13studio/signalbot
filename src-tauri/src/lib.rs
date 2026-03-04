@@ -135,36 +135,35 @@ fn provision_bot_runtime(
 /// Uses Node's own process.execPath to resolve symlinks reliably, with static
 /// path checks as fallback.
 fn find_npm_cli_js(node_path: &str) -> Result<String, String> {
-    // Most reliable: ask Node.js itself where npm lives. process.execPath
-    // resolves symlinks (e.g. pnpm, nvm) where Rust canonicalize may not
-    // in GUI app contexts.
+    // Most reliable: ask Node.js itself where npm-cli.js lives
     if let Ok(output) = StdCommand::new(node_path)
-        .args(["-e", "const p=require('path'),d=p.dirname(process.execPath),c=p.join(d,'..','lib','node_modules','npm','bin','npm-cli.js'),w=p.join(d,'node_modules','npm','bin','npm-cli.js'),fs=require('fs');if(fs.existsSync(c))console.log(c);else if(fs.existsSync(w))console.log(w);else process.exit(1)"])
+        .args(["-e", "const p=require('path'),d=p.dirname(process.execPath),fs=require('fs'),try_paths=[p.join(d,'..','lib','node_modules','npm','bin','npm-cli.js'),p.join(d,'node_modules','npm','bin','npm-cli.js')];for(const c of try_paths){if(fs.existsSync(c)){console.log(c);process.exit(0)}}process.exit(1)"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .output()
     {
         if output.status.success() {
             let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !path.is_empty() {
+            if !path.is_empty() && std::path::Path::new(&path).exists() {
                 return Ok(path);
             }
         }
     }
 
-    // Fallback: static path checks with symlink resolution
+    // Fallback: static path checks relative to the node binary
     let node_raw = std::path::Path::new(node_path);
     let node_resolved = dunce::canonicalize(node_raw).unwrap_or_else(|_| node_raw.to_path_buf());
 
     for node in &[node_resolved.as_path(), node_raw] {
         if let Some(node_dir) = node.parent() {
-            let lib_cli = node_dir.join("../lib/node_modules/npm/bin/npm-cli.js");
-            if lib_cli.exists() {
-                return Ok(dunce::canonicalize(&lib_cli).unwrap_or(lib_cli).to_string_lossy().to_string());
-            }
-            let win_cli = node_dir.join("node_modules/npm/bin/npm-cli.js");
-            if win_cli.exists() {
-                return Ok(dunce::canonicalize(&win_cli).unwrap_or(win_cli).to_string_lossy().to_string());
+            let search_paths = [
+                node_dir.join("../lib/node_modules/npm/bin/npm-cli.js"),
+                node_dir.join("node_modules/npm/bin/npm-cli.js"),
+            ];
+            for cli in &search_paths {
+                if cli.exists() {
+                    return Ok(dunce::canonicalize(cli).unwrap_or(cli.clone()).to_string_lossy().to_string());
+                }
             }
         }
     }
@@ -191,44 +190,95 @@ fn bot_config_dir(_app: &tauri::AppHandle) -> Result<std::path::PathBuf, String>
 // --- Node.js Runtime ---
 
 fn find_node() -> Result<String, String> {
-    let home = std::env::var("HOME").unwrap_or_default();
+    let mut candidates: Vec<String> = Vec::new();
 
-    // Hardcoded paths: system installs, Homebrew, pnpm, nvm, fnm, Volta, n
-    let mut candidates: Vec<String> = vec![
-        "/usr/local/bin/node".into(),
-        "/opt/homebrew/bin/node".into(),
-        format!("{}/Library/pnpm/node", home),
-        format!("{}/.local/share/pnpm/node", home),
-        format!("{}/.volta/bin/node", home),
-        format!("{}/.local/bin/node", home),
-        format!("{}/n/bin/node", home),
-    ];
+    #[cfg(not(target_os = "windows"))]
+    {
+        let home = std::env::var("HOME").unwrap_or_default();
 
-    // nvm: detect current default version
-    let nvm_dir = std::env::var("NVM_DIR").unwrap_or_else(|_| format!("{}/.nvm", home));
-    let nvm_default = std::path::Path::new(&nvm_dir).join("alias/default");
-    if let Ok(ver) = std::fs::read_to_string(&nvm_default) {
-        let ver = ver.trim().to_string();
-        // Look for exact version or glob first matching entry
-        let versions_dir = std::path::Path::new(&nvm_dir).join("versions/node");
-        if let Ok(entries) = std::fs::read_dir(&versions_dir) {
+        candidates.extend([
+            "/usr/local/bin/node".into(),
+            "/opt/homebrew/bin/node".into(),
+            format!("{}/Library/pnpm/node", home),
+            format!("{}/.local/share/pnpm/node", home),
+            format!("{}/.volta/bin/node", home),
+            format!("{}/.local/bin/node", home),
+            format!("{}/n/bin/node", home),
+        ]);
+
+        // nvm: detect current default version
+        let nvm_dir = std::env::var("NVM_DIR").unwrap_or_else(|_| format!("{}/.nvm", home));
+        let nvm_default = std::path::Path::new(&nvm_dir).join("alias/default");
+        if let Ok(ver) = std::fs::read_to_string(&nvm_default) {
+            let ver = ver.trim().to_string();
+            let versions_dir = std::path::Path::new(&nvm_dir).join("versions/node");
+            if let Ok(entries) = std::fs::read_dir(&versions_dir) {
+                for entry in entries.flatten() {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.starts_with(&format!("v{}", ver)) || name == format!("v{}", ver) {
+                        candidates.push(format!("{}/bin/node", entry.path().display()));
+                    }
+                }
+            }
+        }
+
+        // fnm: check common install location
+        let fnm_dir = format!("{}/.local/share/fnm/node-versions", home);
+        if let Ok(entries) = std::fs::read_dir(&fnm_dir) {
             for entry in entries.flatten() {
-                let name = entry.file_name().to_string_lossy().to_string();
-                if name.starts_with(&format!("v{}", ver)) || name == format!("v{}", ver) {
-                    candidates.push(format!("{}/bin/node", entry.path().display()));
+                candidates.push(format!("{}/installation/bin/node", entry.path().display()));
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let userprofile = std::env::var("USERPROFILE").unwrap_or_default();
+        let appdata = std::env::var("APPDATA").unwrap_or_default();
+        let localappdata = std::env::var("LOCALAPPDATA").unwrap_or_default();
+
+        candidates.extend([
+            r"C:\Program Files\nodejs\node.exe".into(),
+            r"C:\Program Files (x86)\nodejs\node.exe".into(),
+            format!(r"{}\scoop\apps\nodejs\current\node.exe", userprofile),
+            format!(r"{}\scoop\apps\nodejs-lts\current\node.exe", userprofile),
+        ]);
+
+        // nvm-windows: scan installed versions
+        let nvm_home = std::env::var("NVM_HOME").unwrap_or_else(|_| format!(r"{}\nvm", appdata));
+        if let Ok(entries) = std::fs::read_dir(&nvm_home) {
+            for entry in entries.flatten() {
+                let exe = entry.path().join("node.exe");
+                if exe.exists() {
+                    candidates.push(exe.to_string_lossy().to_string());
+                }
+            }
+        }
+
+        // Volta on Windows
+        let volta_dir = format!(r"{}\Volta\tools\image\node", localappdata);
+        if let Ok(entries) = std::fs::read_dir(&volta_dir) {
+            for entry in entries.flatten() {
+                let exe = entry.path().join("node.exe");
+                if exe.exists() {
+                    candidates.push(exe.to_string_lossy().to_string());
+                }
+            }
+        }
+
+        // fnm on Windows
+        let fnm_dir = format!(r"{}\fnm\node-versions", localappdata);
+        if let Ok(entries) = std::fs::read_dir(&fnm_dir) {
+            for entry in entries.flatten() {
+                let exe = entry.path().join("installation").join("node.exe");
+                if exe.exists() {
+                    candidates.push(exe.to_string_lossy().to_string());
                 }
             }
         }
     }
 
-    // fnm: check common install location
-    let fnm_dir = format!("{}/.local/share/fnm/node-versions", home);
-    if let Ok(entries) = std::fs::read_dir(&fnm_dir) {
-        for entry in entries.flatten() {
-            candidates.push(format!("{}/installation/bin/node", entry.path().display()));
-        }
-    }
-
+    // Validate each candidate by running `node --version`
     for path in &candidates {
         if std::path::Path::new(path).exists() {
             if StdCommand::new(path).arg("--version").stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok() {
@@ -237,32 +287,21 @@ fn find_node() -> Result<String, String> {
         }
     }
 
-    // Fallback: ask the user's login shell for the PATH
+    // Fallback: ask the OS to locate node
     #[cfg(not(target_os = "windows"))]
     {
-        if let Ok(output) = StdCommand::new("/bin/bash")
-            .args(["-lc", "which node"])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .output()
-        {
-            if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !path.is_empty() && std::path::Path::new(&path).exists() {
-                    return Ok(path);
-                }
-            }
-        }
-        if let Ok(output) = StdCommand::new("/bin/zsh")
-            .args(["-lc", "which node"])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .output()
-        {
-            if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !path.is_empty() && std::path::Path::new(&path).exists() {
-                    return Ok(path);
+        for shell in &["/bin/bash", "/bin/zsh"] {
+            if let Ok(output) = StdCommand::new(shell)
+                .args(["-lc", "which node"])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .output()
+            {
+                if output.status.success() {
+                    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    if !path.is_empty() && std::path::Path::new(&path).exists() {
+                        return Ok(path);
+                    }
                 }
             }
         }
@@ -270,19 +309,15 @@ fn find_node() -> Result<String, String> {
 
     #[cfg(target_os = "windows")]
     {
-        for path in &[
-            r"C:\Program Files\nodejs\node.exe",
-            r"C:\Program Files (x86)\nodejs\node.exe",
-        ] {
-            if std::path::Path::new(path).exists() {
-                return Ok(path.to_string());
-            }
-        }
-        if let Ok(output) = StdCommand::new("where").arg("node").output() {
+        if let Ok(output) = StdCommand::new("where").arg("node.exe").output() {
             if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout).lines().next().unwrap_or("").trim().to_string();
-                if !path.is_empty() {
-                    return Ok(path);
+                for line in String::from_utf8_lossy(&output.stdout).lines() {
+                    let path = line.trim().to_string();
+                    if path.ends_with(".exe") && std::path::Path::new(&path).exists() {
+                        if StdCommand::new(&path).arg("--version").stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok() {
+                            return Ok(path);
+                        }
+                    }
                 }
             }
         }
