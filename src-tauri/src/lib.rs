@@ -132,11 +132,28 @@ fn provision_bot_runtime(
 }
 
 /// Find the npm CLI JavaScript entry point so we can run it via `node <npm-cli.js>`.
-/// This avoids shell/PATH issues on both macOS (GUI apps) and Windows (.cmd vs bash).
+/// Uses Node's own process.execPath to resolve symlinks reliably, with static
+/// path checks as fallback.
 fn find_npm_cli_js(node_path: &str) -> Result<String, String> {
+    // Most reliable: ask Node.js itself where npm lives. process.execPath
+    // resolves symlinks (e.g. pnpm, nvm) where Rust canonicalize may not
+    // in GUI app contexts.
+    if let Ok(output) = StdCommand::new(node_path)
+        .args(["-e", "const p=require('path'),d=p.dirname(process.execPath),c=p.join(d,'..','lib','node_modules','npm','bin','npm-cli.js'),w=p.join(d,'node_modules','npm','bin','npm-cli.js'),fs=require('fs');if(fs.existsSync(c))console.log(c);else if(fs.existsSync(w))console.log(w);else process.exit(1)"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+    {
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !path.is_empty() {
+                return Ok(path);
+            }
+        }
+    }
+
+    // Fallback: static path checks with symlink resolution
     let node_raw = std::path::Path::new(node_path);
-    // Resolve symlinks so relative paths (../lib/...) land in the right place.
-    // dunce::canonicalize avoids the \\?\ prefix that std::fs::canonicalize adds on Windows.
     let node_resolved = dunce::canonicalize(node_raw).unwrap_or_else(|_| node_raw.to_path_buf());
 
     for node in &[node_resolved.as_path(), node_raw] {
