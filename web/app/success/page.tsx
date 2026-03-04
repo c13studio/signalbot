@@ -4,9 +4,8 @@ import { useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 
 const GITHUB_REPO = "c13studio/signalbot";
-const RELEASE_TAG = "latest";
-const DMG_URL = `https://github.com/${GITHUB_REPO}/releases/${RELEASE_TAG}/download/HL.Signalbot_1.0.1_universal.dmg`;
-const EXE_URL = `https://github.com/${GITHUB_REPO}/releases/${RELEASE_TAG}/download/HL.Signalbot_1.0.1_x64-setup.exe`;
+const DMG_URL = "/downloads/HL.Signalbot_1.0.1_universal.dmg";
+const EXE_URL = "/downloads/HL.Signalbot_1.0.1_x64-setup.exe";
 
 function SuccessContent() {
   const params = useSearchParams();
