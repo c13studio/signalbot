@@ -3,6 +3,11 @@
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 
+const GITHUB_REPO = "c13studio/signalbot";
+const RELEASE_TAG = "latest";
+const DMG_URL = `https://github.com/${GITHUB_REPO}/releases/${RELEASE_TAG}/download/HL.Signalbot_1.0.1_universal.dmg`;
+const EXE_URL = `https://github.com/${GITHUB_REPO}/releases/${RELEASE_TAG}/download/HL.Signalbot_1.0.1_x64-setup.exe`;
+
 function SuccessContent() {
   const params = useSearchParams();
   const keyParam = params.get("key");
@@ -11,6 +16,7 @@ function SuccessContent() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showManual, setShowManual] = useState(false);
 
   useEffect(() => {
     if (sessionId && !licenseKey) {
@@ -86,64 +92,76 @@ function SuccessContent() {
           {copied ? "Copied!" : "Click to copy — save this key somewhere safe"}
         </p>
 
-        <h2 className="text-xl font-bold mb-6">Installation Steps</h2>
+        <h2 className="text-xl font-bold mb-2">Download Signalbot</h2>
+        <p className="text-sm text-[var(--text-muted)] mb-6">Choose your platform, install, and paste your license key to activate.</p>
 
-        <div className="space-y-6">
-          {/* Step 1 */}
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--neon)] flex items-center justify-center text-[var(--neon)] font-bold text-sm shrink-0">1</div>
-            <div>
-              <h3 className="font-semibold mb-1">Install prerequisites</h3>
-              <p className="text-sm text-[var(--text-muted)] mb-2">You need two things installed (both free):</p>
-              <ul className="text-sm text-[var(--text-muted)] space-y-1 mb-2">
-                <li>• <a href="https://nodejs.org" target="_blank" className="text-[var(--cyan)] hover:underline">Node.js</a> — download the LTS version (one-click installer)</li>
-                <li>• <a href="https://rustup.rs" target="_blank" className="text-[var(--cyan)] hover:underline">Rust</a> — install by running this in your terminal:</li>
-              </ul>
-              <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 font-mono text-sm leading-relaxed overflow-x-auto">
-                <div className="text-[var(--neon)]">curl --proto &apos;=https&apos; --tlsv1.2 -sSf https://sh.rustup.rs | sh</div>
-                <div className="text-[var(--neon)]">source &quot;$HOME/.cargo/env&quot;</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <a
+            href={DMG_URL}
+            className="flex items-center justify-center gap-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-[var(--neon)]/40 rounded-xl p-5 transition-all group"
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/60 group-hover:text-[var(--neon)] transition-colors">
+              <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" />
+              <path d="M15.5 8.5c.5-1.5-.2-3-.2-3s-1.5.5-2.3 1.8c-.7-1.3-2.3-1.8-2.3-1.8s-.7 1.5-.2 3C9 9 8 10.5 8 12c0 2.5 1.8 4.5 4 4.5s4-2 4-4.5c0-1.5-1-3-2-3.5z" />
+            </svg>
+            <div className="text-left">
+              <div className="font-semibold text-white group-hover:text-[var(--neon)] transition-colors">macOS</div>
+              <div className="text-xs text-white/30">Universal (Intel + Apple Silicon)</div>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-auto text-white/20 group-hover:text-[var(--neon)] transition-colors">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </a>
+
+          <a
+            href={EXE_URL}
+            className="flex items-center justify-center gap-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-[var(--neon)]/40 rounded-xl p-5 transition-all group"
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/60 group-hover:text-[var(--neon)] transition-colors">
+              <rect x="3" y="3" width="8" height="8" /><rect x="13" y="3" width="8" height="8" /><rect x="3" y="13" width="8" height="8" /><rect x="13" y="13" width="8" height="8" />
+            </svg>
+            <div className="text-left">
+              <div className="font-semibold text-white group-hover:text-[var(--neon)] transition-colors">Windows</div>
+              <div className="text-xs text-white/30">64-bit Installer</div>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-auto text-white/20 group-hover:text-[var(--neon)] transition-colors">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </a>
+        </div>
+
+        <div className="border border-white/[0.06] rounded-xl overflow-hidden">
+          <button
+            onClick={() => setShowManual(!showManual)}
+            className="w-full flex items-center justify-between px-5 py-4 text-sm text-white/40 hover:text-white/60 transition-colors"
+          >
+            <span>Manual install (advanced)</span>
+            <svg
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className={`transition-transform ${showManual ? "rotate-180" : ""}`}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {showManual && (
+            <div className="px-5 pb-5 space-y-5 border-t border-white/[0.06]">
+              <div className="pt-4">
+                <p className="text-xs text-white/30 mb-3">Requires <a href="https://nodejs.org" target="_blank" className="text-[var(--cyan)] hover:underline">Node.js</a> and <a href="https://rustup.rs" target="_blank" className="text-[var(--cyan)] hover:underline">Rust</a>.</p>
+                <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 font-mono text-sm leading-relaxed overflow-x-auto space-y-0.5">
+                  <div className="text-white/20"># Install Rust (macOS/Linux)</div>
+                  <div className="text-[var(--neon)]">curl --proto &apos;=https&apos; --tlsv1.2 -sSf https://sh.rustup.rs | sh</div>
+                  <div className="text-[var(--neon)]">source &quot;$HOME/.cargo/env&quot;</div>
+                  <div className="mt-2" />
+                  <div className="text-white/20"># Clone, install &amp; run</div>
+                  <div className="text-[var(--neon)]">git clone https://github.com/{GITHUB_REPO}.git</div>
+                  <div className="text-[var(--neon)]">cd signalbot && npm install</div>
+                  <div className="text-[var(--neon)]">cd bot && npm install && cd ..</div>
+                  <div className="text-[var(--neon)]">npx tauri dev</div>
+                </div>
               </div>
-              <p className="text-xs text-[var(--text-muted)] mt-2">Windows users: download the Rust installer from <a href="https://rustup.rs" target="_blank" className="text-[var(--cyan)] hover:underline">rustup.rs</a> instead.</p>
             </div>
-          </div>
-
-          {/* Step 2 */}
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--neon)] flex items-center justify-center text-[var(--neon)] font-bold text-sm shrink-0">2</div>
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">Clone &amp; install</h3>
-              <p className="text-sm text-[var(--text-muted)] mb-2">Open your terminal and run:</p>
-              <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 font-mono text-sm leading-relaxed overflow-x-auto">
-                <div className="text-[var(--neon)]">git clone https://github.com/jtadiar/signalbot.git</div>
-                <div className="text-[var(--neon)]">cd signalbot</div>
-                <div className="text-[var(--neon)]">npm install</div>
-                <div className="text-[var(--neon)]">cd bot &amp;&amp; npm install &amp;&amp; cd ..</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--neon)] flex items-center justify-center text-[var(--neon)] font-bold text-sm shrink-0">3</div>
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">Launch the desktop app</h3>
-              <p className="text-sm text-[var(--text-muted)] mb-2">Build and open the app (first run takes a few minutes to compile):</p>
-              <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 font-mono text-sm leading-relaxed overflow-x-auto">
-                <div className="text-[var(--neon)]">npx tauri dev</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Step 4 */}
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--neon)] flex items-center justify-center text-[var(--neon)] font-bold text-sm shrink-0">4</div>
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">Activate &amp; configure</h3>
-              <p className="text-sm text-[var(--text-muted)]">
-                The app will open and ask for your license key — paste the key above. Then follow the setup wizard to enter your wallet, risk parameters, and TP/SL settings. Hit Start and you&apos;re trading.
-              </p>
-            </div>
-          </div>
+          )}
         </div>
 
         <div className="mt-10 pt-6 border-t border-[var(--border)] text-center">
@@ -152,10 +170,10 @@ function SuccessContent() {
           </a>
           <p className="text-xs text-[var(--text-muted)] mt-4">
             Need help? See the{" "}
-            <a href="https://github.com/jtadiar/signalbot/blob/main/bot/CONFIGURATION.md" target="_blank" className="text-[var(--cyan)] hover:underline">
-              CONFIGURATION.md
+            <a href={`https://github.com/${GITHUB_REPO}/blob/main/bot/CONFIGURATION.md`} target="_blank" className="text-[var(--cyan)] hover:underline">
+              configuration guide
             </a>{" "}
-            guide for full documentation.
+            for full documentation.
           </p>
         </div>
       </div>
