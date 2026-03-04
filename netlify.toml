@@ -8,5 +8,5 @@
 
 [[redirects]]
   from = "/"
-  to = "/signalbot/index.html"
+  to = "/signalbot/home.html"
   status = 200
