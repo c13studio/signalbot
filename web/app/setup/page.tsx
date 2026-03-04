@@ -88,19 +88,20 @@ export default function SetupPage() {
               { title: "Configuring Settings", desc: "Walk through every setting: risk, TP/SL, signal params, and more." },
               { title: "Setting Up Telegram", desc: "Create a bot, get your token, and enable trade notifications." },
             ].map((v) => (
-              <div key={v.title} className="card">
-                <div className="aspect-video rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
-                  <div className="w-14 h-14 rounded-full bg-[var(--neon)]/10 border border-[var(--neon)]/20 flex items-center justify-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--neon)">
+              <div key={v.title} className="card opacity-40 pointer-events-none select-none">
+                <div className="aspect-video rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4 relative">
+                  <div className="w-14 h-14 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white" fillOpacity="0.15">
                       <path d="M8 5v14l11-7L8 5z" />
                     </svg>
                   </div>
                 </div>
-                <h3 className="font-semibold text-sm italic mb-1">{v.title}</h3>
-                <p className="text-white/30 text-xs leading-relaxed">{v.desc}</p>
+                <h3 className="font-semibold text-sm mb-1">{v.title}</h3>
+                <p className="text-white/20 text-xs leading-relaxed">{v.desc}</p>
               </div>
             ))}
           </div>
+          <p className="text-center text-white/25 text-sm mt-6">Video tutorials coming soon</p>
         </div>
       </section>
 
