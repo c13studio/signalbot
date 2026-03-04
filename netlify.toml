@@ -8,10 +8,5 @@
 
 [[redirects]]
   from = "/"
-  to = "/signalbot"
-  status = 302
-
-[[redirects]]
-  from = "/api/*"
-  to = "/signalbot/api/:splat"
+  to = "/signalbot/index.html"
   status = 200
