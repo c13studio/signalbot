@@ -40,11 +40,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "macOS": {
-      "signing": {
-        "identity": "-"
-      }
-    },
     "resources": {
       "../bot/cli.mjs": "bot/cli.mjs",
       "../bot/index.mjs": "bot/index.mjs",
