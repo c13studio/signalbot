@@ -228,6 +228,16 @@ fn bot_config_dir(_app: &tauri::AppHandle) -> Result<std::path::PathBuf, String>
 
 // --- Node.js Runtime ---
 
+#[cfg(target_os = "macos")]
+fn clear_quarantine(path: &std::path::Path) {
+    let _ = StdCommand::new("xattr")
+        .args(["-d", "com.apple.quarantine"])
+        .arg(path)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+}
+
 fn find_node() -> Result<String, String> {
     // Prefer the bundled Node.js sidecar (next to our own executable)
     if let Ok(exe) = std::env::current_exe() {
@@ -241,6 +251,8 @@ fn find_node() -> Result<String, String> {
             if bundled.exists() {
                 if let Ok(canon) = dunce::canonicalize(&bundled) {
                     if canon != exe {
+                        #[cfg(target_os = "macos")]
+                        clear_quarantine(&canon);
                         return Ok(canon.to_string_lossy().to_string());
                     }
                 }
