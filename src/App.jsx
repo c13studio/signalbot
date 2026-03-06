@@ -20,8 +20,10 @@ export default function App() {
       invoke('bot_file_exists', { filename: 'config.json' }),
       invoke('bot_file_exists', { filename: '.env' }),
     ]).then(([hasConfig, hasEnv]) => {
-      setConfigured(hasConfig && hasEnv);
-      if (hasConfig && hasEnv) localStorage.setItem('configured', '1');
+      const ok = hasConfig && hasEnv;
+      setConfigured(ok);
+      if (ok) localStorage.setItem('configured', '1');
+      else localStorage.removeItem('configured');
     }).catch(() => {
       setConfigured(!!localStorage.getItem('configured'));
     });
